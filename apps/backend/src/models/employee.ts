@@ -1,11 +1,11 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function EmployeeModel(sequelize: any) {
   class Employee extends Model {
-    getFullInfo() {
-      return `${this.employee_number} - ${this.full_name}`;
+    getFullInfo(): string {
+      return `${this.getDataValue('employee_number')} - ${this.getDataValue('full_name')}`;
     }
   }
 
@@ -86,4 +86,4 @@ module.exports = (sequelize) => {
   });
 
   return Employee;
-};
+}

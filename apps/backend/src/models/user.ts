@@ -1,9 +1,13 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
-  class User extends Model {}
+export default function UserModel(sequelize: any) {
+  class User extends Model {
+    isAdmin(): boolean {
+      return this.getDataValue('role') === 'admin';
+    }
+  }
 
   User.init({
     id: {
@@ -49,11 +53,11 @@ module.exports = (sequelize) => {
       attributes: { exclude: ['password_hash'] },
     },
     scopes: {
-      withPassword: { attributes: {} },
+      withPassword: { attributes: { include: ['password_hash'] } },
       active: { where: { is_active: true } },
       admins: { where: { role: 'admin' } },
     },
   });
 
   return User;
-};
+}

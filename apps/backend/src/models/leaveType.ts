@@ -1,8 +1,8 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function LeaveTypeModel(sequelize: any) {
   class LeaveType extends Model {}
 
   LeaveType.init({
@@ -41,4 +41,4 @@ module.exports = (sequelize) => {
   });
 
   return LeaveType;
-};
+}

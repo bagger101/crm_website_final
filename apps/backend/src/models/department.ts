@@ -1,8 +1,8 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function DepartmentModel(sequelize: any) {
   class Department extends Model {}
 
   Department.init({
@@ -33,4 +33,4 @@ module.exports = (sequelize) => {
   });
 
   return Department;
-};
+}

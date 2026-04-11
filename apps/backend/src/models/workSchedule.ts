@@ -1,30 +1,20 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function WorkScheduleModel(sequelize: any) {
   class WorkSchedule extends Model {
-    /**
-     * Hitung menit keterlambatan dari waktu check-in aktual.
-     * @param {Date} actualCheckIn - Waktu check-in aktual
-     * @param {string} date - Tanggal string 'YYYY-MM-DD' untuk build datetime
-     * @returns {number} menit telat (0 jika tidak telat)
-     */
-    calcLateMinutes(actualCheckIn, date) {
-      const [hours, minutes] = this.check_in_time.split(':').map(Number);
-      const scheduled = new Date(`${date}T${this.check_in_time}`);
-      const deadline = new Date(scheduled.getTime() + this.tolerance_minutes * 60000);
+    calcLateMinutes(actualCheckIn: Date, date: string): number {
+      const checkInTime = this.getDataValue('check_in_time') as string;
+      const toleranceMinutes = this.getDataValue('tolerance_minutes') as number;
+      const scheduled = new Date(`${date}T${checkInTime}`);
+      const deadline = new Date(scheduled.getTime() + toleranceMinutes * 60000);
       if (actualCheckIn <= deadline) return 0;
-      return Math.floor((actualCheckIn - deadline) / 60000);
+      return Math.floor((actualCheckIn.getTime() - deadline.getTime()) / 60000);
     }
 
-    /**
-     * Hitung total penalti rupiah dari menit keterlambatan.
-     * @param {number} lateMinutes
-     * @returns {number}
-     */
-    calcPenalty(lateMinutes) {
-      return lateMinutes * parseFloat(this.penalty_per_minute);
+    calcPenalty(lateMinutes: number): number {
+      return lateMinutes * Number(this.getDataValue('penalty_per_minute'));
     }
   }
 
@@ -70,4 +60,4 @@ module.exports = (sequelize) => {
   });
 
   return WorkSchedule;
-};
+}

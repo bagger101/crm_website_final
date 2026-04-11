@@ -1,12 +1,12 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function LeaveRequestModel(sequelize: any) {
   class LeaveRequest extends Model {
-    get isPending() { return this.status === 'pending'; }
-    get isApproved() { return this.status === 'approved'; }
-    get isDeclined() { return this.status === 'declined'; }
+    get isPending(): boolean { return this.getDataValue('status') === 'pending'; }
+    get isApproved(): boolean { return this.getDataValue('status') === 'approved'; }
+    get isDeclined(): boolean { return this.getDataValue('status') === 'declined'; }
   }
 
   LeaveRequest.init({
@@ -31,8 +31,8 @@ module.exports = (sequelize) => {
       type: DataTypes.DATEONLY,
       allowNull: false,
       validate: {
-        isAfterStart(value) {
-          if (value < this.start_date) {
+        isAfterStart(this: any, value: string) {
+          if (value < this.getDataValue('start_date')) {
             throw new Error('end_date tidak boleh sebelum start_date');
           }
         },
@@ -75,9 +75,9 @@ module.exports = (sequelize) => {
     scopes: {
       pending: { where: { status: 'pending' } },
       approved: { where: { status: 'approved' } },
-      byEmployee: (employeeId) => ({ where: { employee_id: employeeId } }),
+      byEmployee: (employeeId: string) => ({ where: { employee_id: employeeId } }),
     },
   });
 
   return LeaveRequest;
-};
+}

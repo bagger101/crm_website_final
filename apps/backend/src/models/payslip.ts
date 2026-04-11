@@ -1,21 +1,17 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function PayslipModel(sequelize: any) {
   class Payslip extends Model {
-    /**
-     * Hitung ulang net_salary dari kolom agregat.
-     * Dipanggil setelah semua payroll_items ditambahkan.
-     */
-    recalculate() {
-      this.net_salary = (
-        parseFloat(this.base_salary) +
-        parseFloat(this.total_incentive) +
-        parseFloat(this.total_bonus) +
-        parseFloat(this.total_reimburse) -
-        parseFloat(this.total_penalty)
-      );
+    recalculate(): void {
+      const baseSalary = Number(this.getDataValue('base_salary'));
+      const totalIncentive = Number(this.getDataValue('total_incentive'));
+      const totalBonus = Number(this.getDataValue('total_bonus'));
+      const totalReimburse = Number(this.getDataValue('total_reimburse'));
+      const totalPenalty = Number(this.getDataValue('total_penalty'));
+
+      this.setDataValue('net_salary', baseSalary + totalIncentive + totalBonus + totalReimburse - totalPenalty);
     }
   }
 
@@ -73,4 +69,4 @@ module.exports = (sequelize) => {
   });
 
   return Payslip;
-};
+}

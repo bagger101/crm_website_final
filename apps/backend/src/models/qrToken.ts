@@ -1,15 +1,15 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model, Op } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function QrTokenModel(sequelize: any) {
   class QrToken extends Model {
-    isExpired() {
-      return new Date() > this.expires_at;
+    isExpired(): boolean {
+      return new Date() > (this.getDataValue('expires_at') as Date);
     }
 
-    isValid() {
-      return !this.is_used && !this.isExpired();
+    isValid(): boolean {
+      return !this.getDataValue('is_used') && !this.isExpired();
     }
   }
 
@@ -53,11 +53,11 @@ module.exports = (sequelize) => {
       valid: {
         where: {
           is_used: false,
-          expires_at: { [sequelize.Sequelize.Op.gt]: new Date() },
+          expires_at: { [Op.gt]: new Date() },
         },
       },
     },
   });
 
   return QrToken;
-};
+}

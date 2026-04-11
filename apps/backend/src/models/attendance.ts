@@ -1,15 +1,15 @@
 'use strict';
 
-const { DataTypes, Model, Op } = require('sequelize');
+import { DataTypes, Model, Op } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function AttendanceModel(sequelize: any) {
   class Attendance extends Model {
-    get isLate() {
-      return this.late_minutes > 0;
+    get isLate(): boolean {
+      return (this.getDataValue('late_minutes') as number) > 0;
     }
 
-    get isComplete() {
-      return this.check_in_at !== null && this.check_out_at !== null;
+    get isComplete(): boolean {
+      return this.getDataValue('check_in_at') !== null && this.getDataValue('check_out_at') !== null;
     }
   }
 
@@ -62,10 +62,10 @@ module.exports = (sequelize) => {
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     scopes: {
-      byMonth: (year, month) => ({
+      byMonth: (year: number, month: number) => ({
         where: sequelize.where(
           sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date')),
-          new Date(year, month - 1, 1)
+          new Date(year, month - 1, 1),
         ),
       }),
       late: { where: { status: 'late' } },
@@ -74,4 +74,4 @@ module.exports = (sequelize) => {
   });
 
   return Attendance;
-};
+}

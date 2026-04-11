@@ -1,19 +1,17 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function ActivityLogModel(sequelize: any) {
   class ActivityLog extends Model {
-    /**
-     * Helper untuk membuat log entry dengan format standar.
-     * @param {string} actorId - user.id yang melakukan aksi
-     * @param {string} action - format 'resource.verb', misal 'leave.approve'
-     * @param {string|null} targetType - nama tabel target, misal 'leave_request'
-     * @param {string|null} targetId - UUID target
-     * @param {object|null} payload - { before, after } atau detail lain
-     * @param {string|null} ipAddress
-     */
-    static async record(actorId, action, targetType = null, targetId = null, payload = null, ipAddress = null) {
+    static async record(
+      actorId: string,
+      action: string,
+      targetType: string | null = null,
+      targetId: string | null = null,
+      payload: object | null = null,
+      ipAddress: string | null = null,
+    ) {
       return ActivityLog.create({
         actor_id: actorId,
         action,
@@ -64,11 +62,11 @@ module.exports = (sequelize) => {
     createdAt: 'created_at',
     updatedAt: false,
     scopes: {
-      byActor: (actorId) => ({ where: { actor_id: actorId } }),
-      byAction: (action) => ({ where: { action } }),
-      byTarget: (type, id) => ({ where: { target_type: type, target_id: id } }),
+      byActor: (actorId: string) => ({ where: { actor_id: actorId } }),
+      byAction: (action: string) => ({ where: { action } }),
+      byTarget: (type: string, id: string) => ({ where: { target_type: type, target_id: id } }),
     },
   });
 
   return ActivityLog;
-};
+}

@@ -1,15 +1,15 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function PasswordResetTokenModel(sequelize: any) {
   class PasswordResetToken extends Model {
-    isExpired() {
-      return new Date() > this.expires_at;
+    isExpired(): boolean {
+      return new Date() > (this.getDataValue('expires_at') as Date);
     }
 
-    isValid() {
-      return !this.used_at && !this.isExpired();
+    isValid(): boolean {
+      return !this.getDataValue('used_at') && !this.isExpired();
     }
   }
 
@@ -47,4 +47,4 @@ module.exports = (sequelize) => {
   });
 
   return PasswordResetToken;
-};
+}

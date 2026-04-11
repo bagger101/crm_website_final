@@ -1,17 +1,17 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function PayrollPeriodModel(sequelize: any) {
   class PayrollPeriod extends Model {
-    get label() {
-      const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-      return `${months[this.month - 1]} ${this.year}`;
+    get label(): string {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      return `${months[(this.getDataValue('month') as number) - 1]} ${this.getDataValue('year')}`;
     }
 
-    get isDraft() { return this.status === 'draft'; }
-    get isFinalized() { return this.status === 'finalized'; }
-    get isPaid() { return this.status === 'paid'; }
+    get isDraft(): boolean { return this.getDataValue('status') === 'draft'; }
+    get isFinalized(): boolean { return this.getDataValue('status') === 'finalized'; }
+    get isPaid(): boolean { return this.getDataValue('status') === 'paid'; }
   }
 
   PayrollPeriod.init({
@@ -58,4 +58,4 @@ module.exports = (sequelize) => {
   });
 
   return PayrollPeriod;
-};
+}

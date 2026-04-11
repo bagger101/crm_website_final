@@ -1,12 +1,12 @@
 'use strict';
 
-const { DataTypes, Model } = require('sequelize');
+import { DataTypes, Model } from 'sequelize';
 
-module.exports = (sequelize) => {
+export default function ReimbursementModel(sequelize: any) {
   class Reimbursement extends Model {
-    get isPending() { return this.status === 'pending'; }
-    get isApproved() { return this.status === 'approved'; }
-    get isProcessed() { return this.payroll_item_id !== null; }
+    get isPending(): boolean { return this.getDataValue('status') === 'pending'; }
+    get isApproved(): boolean { return this.getDataValue('status') === 'approved'; }
+    get isProcessed(): boolean { return this.getDataValue('payroll_item_id') !== null; }
   }
 
   Reimbursement.init({
@@ -78,4 +78,4 @@ module.exports = (sequelize) => {
   });
 
   return Reimbursement;
-};
+}
