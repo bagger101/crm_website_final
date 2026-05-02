@@ -32,6 +32,11 @@ interface PortalPageProps {
   onEmployeeUpdate: (employee: SessionUser['employee']) => void;
 }
 
+type PortalMenu = 'overview' | 'profile' | 'leave' | 'reimburse' | 'users' | 'attendance-qr' | 'attendance-scan';
+
+interface AttendanceQrView extends AdminAttendanceQrCode {
+  qrDataUrl: string;
+}
 type PortalMenu = 'overview' | 'profile' | 'leave' | 'reimburse' | 'users' | 'payroll' | 'my-payroll';
 type PortalMenu = 'overview' | 'profile' | 'leave' | 'reimburse' | 'users' | 'attendance-qr' | 'attendance-scan';
 
@@ -64,6 +69,8 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
       ? 'Manager'
       : 'Staff';
   const canManageUsers = currentUser.user.role === 'admin';
+  const canManageAttendanceQr = currentUser.user.role === 'admin';
+  const canScanAttendance = currentUser.user.role === 'staff' || currentUser.user.role === 'manager';
   const canManagePayroll = currentUser.user.role === 'admin';
   const canViewMyPayroll = Boolean(currentUser.employee);
   const canManageAttendanceQr = currentUser.user.role === 'admin';
@@ -87,6 +94,9 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
   const [reimbursementSubmitLoading, setReimbursementSubmitLoading] = useState(false);
   const [reimbursementError, setReimbursementError] = useState('');
   const [reimbursementMessage, setReimbursementMessage] = useState('');
+  const [attendanceQr, setAttendanceQr] = useState<AttendanceQrView | null>(null);
+  const [attendanceQrLoading, setAttendanceQrLoading] = useState(false);
+  const [attendanceQrError, setAttendanceQrError] = useState('');
   const [payrollPeriods, setPayrollPeriods] = useState<PayrollPeriod[]>([]);
   const [payrollPreview, setPayrollPreview] = useState<PayrollPreviewResponse | null>(null);
   const [payrollPayslips, setPayrollPayslips] = useState<PayrollPayslip[]>([]);
@@ -354,6 +364,16 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
       menus.push({ id: 'users', label: 'User Management' });
     }
 
+    if (canManageAttendanceQr) {
+      menus.push({ id: 'attendance-qr', label: 'Attendance QR' });
+    }
+
+    if (canScanAttendance) {
+      menus.push({ id: 'attendance-scan', label: 'Scan QR' });
+    }
+
+    return menus;
+  }, [canManageUsers, canManageAttendanceQr, canScanAttendance]);
     if (canManagePayroll) {
       menus.push({ id: 'payroll', label: 'Payroll' });
     }
@@ -567,6 +587,41 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
     void loadReimbursements();
   }, [token]);
 
+  const loadAttendanceQr = async (forceRefresh = false) => {
+    if (!canManageAttendanceQr || !token) {
+      return;
+    }
+
+    try {
+      setAttendanceQrLoading(true);
+      setAttendanceQrError('');
+      const result = await attendanceApi.getAdminQrCode(token, forceRefresh);
+
+      if (!result || !result.token) {
+        throw new Error('Data QR tidak lengkap dari server');
+      }
+
+      let qrDataUrl = '';
+      try {
+        qrDataUrl = await QRCode.toDataURL(result.token, {
+          width: 260,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+        });
+      } catch (genErr) {
+        console.error('QR generation failed', genErr);
+        throw new Error('Gagal membuat gambar QR');
+      }
+
+      setAttendanceQr({
+        ...result,
+        qrDataUrl,
+      });
+    } catch (err) {
+      console.error('loadAttendanceQr error', err);
+      setAttendanceQrError(err instanceof Error ? err.message : 'Gagal memuat QR absensi');
+    } finally {
+      setAttendanceQrLoading(false);
   const loadPayrollPeriods = async () => {
     if (!token || !canManagePayroll) return;
 
@@ -586,6 +641,12 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
   };
 
   useEffect(() => {
+    if (activeMenu !== 'attendance-qr' || !canManageAttendanceQr || !token) {
+      return;
+    }
+
+    void loadAttendanceQr();
+  }, [activeMenu, canManageAttendanceQr, token]);
     void loadPayrollPeriods();
   }, [token, canManagePayroll]);
 
@@ -1657,6 +1718,54 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
       </section>
       )}
 
+      {activeMenu === 'attendance-qr' && canManageAttendanceQr && (
+      <section className="panel attendance-panel">
+        <div className="section-head">
+          <div>
+            <h3>Attendance QR</h3>
+            <p className="subtext">QR hari ini untuk absensi masuk. Klik Refresh QR untuk membuat kode baru.</p>
+          </div>
+          <button type="button" onClick={handleRefreshAttendanceQr} disabled={attendanceQrLoading}>
+            {attendanceQrLoading ? 'Memuat...' : 'Refresh QR'}
+          </button>
+        </div>
+
+        {attendanceQrError && <div className="alert-error">{attendanceQrError}</div>}
+
+        {attendanceQr ? (
+          <div className="qr-layout">
+            <div className="qr-card">
+              <img
+                className="qr-code-image"
+                src={attendanceQr.qrDataUrl}
+                alt="QR code absensi"
+              />
+              <div className="qr-card-meta">
+                <span className="qr-card-pill">Hari ini</span>
+                <strong>{attendanceQr.valid_for_date}</strong>
+              </div>
+              <p className="subtext qr-card-note">QR akan berganti saat Anda menekan Refresh QR.</p>
+            </div>
+          </div>
+        ) : (
+          !attendanceQrLoading && !attendanceQrError && (
+            <p className="subtext">Belum ada QR code yang dimuat.</p>
+          )
+        )}
+      </section>
+      )}
+
+      {activeMenu === 'attendance-scan' && canScanAttendance && (
+      <section className="panel scanner-panel">
+        <div className="section-head">
+          <div>
+            <h3>Scan QR Absensi</h3>
+            <p className="subtext">Scan QR absensi yang ditampilkan admin untuk mencatat kehadiran Anda.</p>
+          </div>
+        </div>
+
+        {token && <AttendanceScanner token={token} />}
+      </section>
       {activeMenu === 'payroll' && canManagePayroll && (
         <section className="panel payroll-panel">
           <h3>Payroll Management</h3>
