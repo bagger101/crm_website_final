@@ -7,13 +7,15 @@ import {
   EmployeeSchedule,
   QrToken,
   WorkSchedule,
+  User,
 } from '../models/index';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors';
 import {
   getNowInJakarta,
   getTodayInJakarta,
   isAfter6PM,
-  isAfter2AM,
+  isAfter7AM,
+  isWithin6to10AM,
 } from '../utils/timezone';
 
 type QrTokenRecord = {
@@ -30,6 +32,11 @@ class AttendanceService {
   static async getAdminQrCode(actorId: string, forceRefresh = false) {
     const today = getTodayInJakarta();
     const now = getNowInJakarta();
+
+    // Feature: QR only available between 06:00 AM - 10:00 AM
+    if (!isWithin6to10AM()) {
+      throw new AppError('QR code hanya dapat di-generate antara jam 06:00 - 10:00 WIB pagi', 403, 'QR_OUTSIDE_ALLOWED_HOURS');
+    }
 
     if (forceRefresh) {
       await QrToken.update(
@@ -158,49 +165,33 @@ class AttendanceService {
       // Calculate late minutes
       let lateMinutes = 0;
 
-      // Feature: Late if after 2 AM
-      if (isAfter2AM()) {
-        lateMinutes = 120; // Default 2 hours late
-        
-        // But also check schedule-based late calculation
-        const scheduleAssignment = await EmployeeSchedule.findOne({
-          where: {
-            employee_id: employee.getDataValue('id'),
-            effective_date: { [Op.lte]: today },
+      // Get schedule assignment
+      const scheduleAssignment = await EmployeeSchedule.findOne({
+        where: {
+          employee_id: employee.getDataValue('id'),
+          effective_date: { [Op.lte]: today },
+        },
+        include: [
+          {
+            model: WorkSchedule,
+            as: 'workSchedule',
           },
-          include: [
-            {
-              model: WorkSchedule,
-              as: 'workSchedule',
-            },
-          ],
-          order: [['effective_date', 'DESC']],
-          transaction,
-        }) as any;
+        ],
+        order: [['effective_date', 'DESC']],
+        transaction,
+      }) as any;
 
-        if (scheduleAssignment?.workSchedule) {
-          const scheduleLateMins = scheduleAssignment.workSchedule.calcLateMinutes(now, today);
-          lateMinutes = Math.max(lateMinutes, scheduleLateMins);
-        }
-      } else {
-        // Before 2 AM - use regular schedule-based calculation
-        const scheduleAssignment = await EmployeeSchedule.findOne({
-          where: {
-            employee_id: employee.getDataValue('id'),
-            effective_date: { [Op.lte]: today },
-          },
-          include: [
-            {
-              model: WorkSchedule,
-              as: 'workSchedule',
-            },
-          ],
-          order: [['effective_date', 'DESC']],
-          transaction,
-        }) as any;
+      if (scheduleAssignment?.workSchedule) {
+        lateMinutes = scheduleAssignment.workSchedule.calcLateMinutes(now, today);
+      }
 
-        if (scheduleAssignment?.workSchedule) {
-          lateMinutes = scheduleAssignment.workSchedule.calcLateMinutes(now, today);
+      // Feature: If after 7 AM, apply minimum penalty starting from 7:01 AM
+      if (isAfter7AM()) {
+        const today7AM = new Date(`${today}T07:00:00`);
+        const minutesAfter7AM = Math.floor((now.getTime() - today7AM.getTime()) / 60000);
+        // Ensure at least 1 minute late is recorded if after 7:01 AM
+        if (minutesAfter7AM > 0) {
+          lateMinutes = Math.max(lateMinutes, minutesAfter7AM);
         }
       }
 
@@ -236,6 +227,62 @@ class AttendanceService {
       };
     } catch (error) {
       await transaction.rollback();
+      throw error;
+    }
+  }
+
+  static async getAttendanceHistory(params: any) {
+    try {
+      const { month, year, employee_id } = params;
+      const where: any = {};
+
+      if (employee_id) {
+        where.employee_id = employee_id;
+      }
+
+      if (month && year) {
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const endDate = new Date(year, month, 0); // Last day of month
+        const endDateString = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+        where.date = {
+          [Op.between]: [startDate, endDateString],
+        };
+      }
+
+      const attendances = await Attendance.findAll({
+        where,
+        include: [
+          {
+            model: Employee,
+            as: 'employee',
+            attributes: ['id', 'full_name', 'user_id'],
+            include: [
+              {
+                model: User,
+                as: 'user',
+                attributes: ['email'],
+              },
+            ],
+          },
+        ],
+        order: [['date', 'DESC']],
+        raw: false,
+      });
+
+      return attendances.map((att: any) => ({
+        id: att.id,
+        employee_id: att.employee_id,
+        employee_name: att.employee?.full_name,
+        employee_email: att.employee?.user?.email,
+        date: att.date,
+        check_in_at: att.check_in_at,
+        check_out_at: att.check_out_at,
+        late_minutes: att.late_minutes,
+        status: att.status,
+        note: att.note,
+      }));
+    } catch (error) {
+      console.error('Error in getAttendanceHistory:', error);
       throw error;
     }
   }

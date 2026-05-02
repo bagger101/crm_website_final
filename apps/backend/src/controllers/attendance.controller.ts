@@ -35,3 +35,23 @@ export async function scanQrCode(req: Request, res: Response, next: NextFunction
     next(err);
   }
 }
+
+export async function getAttendanceHistory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { month, year, employee_id } = req.query;
+
+    const historyParams: any = {};
+    if (month && year) {
+      historyParams.month = Number(month);
+      historyParams.year = Number(year);
+    }
+    if (employee_id) {
+      historyParams.employee_id = String(employee_id);
+    }
+
+    const records = await AttendanceService.getAttendanceHistory(historyParams);
+    sendSuccess(res, records, 'Riwayat absensi berhasil diambil');
+  } catch (err) {
+    next(err);
+  }
+}

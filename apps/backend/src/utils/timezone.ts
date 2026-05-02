@@ -29,7 +29,17 @@ export function isAfter6PM(): boolean {
 
 export function isAfter2AM(): boolean {
   const hour = getHourInJakarta();
-  return hour >= 8; // 2 AM = 08:00 in 24-hour format
+  return hour >= 2; // 2 AM = 02:00 in 24-hour format
+}
+
+export function isAfter7AM(): boolean {
+  const hour = getHourInJakarta();
+  return hour >= 7; // 7 AM = 07:00 in 24-hour format
+}
+
+export function isWithin6to10AM(): boolean {
+  const hour = getHourInJakarta();
+  return hour >= 6 && hour < 10; // 06:00 to 09:59
 }
 
 export function formatDateJakarta(date: Date = new Date(), dateFormat = 'dd MMM yyyy HH:mm:ss'): string {

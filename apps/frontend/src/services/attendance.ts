@@ -73,4 +73,26 @@ export const attendanceApi = {
     const payload: AttendanceScanResponse = await res.json();
     return payload.data;
   },
+
+  async getAttendanceHistory(
+    token: string,
+    params: { month?: number; year?: number; employee_id?: string } = {}
+  ): Promise<any[]> {
+    const url = new URL(`${API_BASE_URL}/attendance/history`);
+    if (params.month) url.searchParams.set('month', String(params.month));
+    if (params.year) url.searchParams.set('year', String(params.year));
+    if (params.employee_id) url.searchParams.set('employee_id', params.employee_id);
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Gagal mengambil riwayat absensi');
+    }
+
+    const payload: any = await res.json();
+    return payload.data || [];
+  },
 };
