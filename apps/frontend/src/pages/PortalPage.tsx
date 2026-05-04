@@ -823,13 +823,45 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
     e.preventDefault();
     if (!token || !currentUser.employee) return;
 
+    // Validasi field yang wajib diisi
+    if (!profileForm.full_name.trim()) {
+      setProfileError('Nama Lengkap wajib diisi');
+      return;
+    }
+    if (!profileForm.phone.trim()) {
+      setProfileError('Nomor Telepon wajib diisi');
+      return;
+    }
+    // Normalisasi nomor telepon dulu, lalu validasi panjang digitnya
+    let normalizedPhone = profileForm.phone.trim().replace(/\s/g, '');
+    if (normalizedPhone.startsWith('+62')) {
+      normalizedPhone = '0' + normalizedPhone.slice(3);
+    } else if (normalizedPhone.startsWith('62') && !normalizedPhone.startsWith('0')) {
+      normalizedPhone = '0' + normalizedPhone.slice(2);
+    }
+
+    const phoneDigitsOnly = normalizedPhone.replace(/\D/g, '');
+    if (phoneDigitsOnly.length < 10) {
+      setProfileError('Nomor Telepon harus minimal 10 digit (contoh: 081234567890)');
+      return;
+    }
+    if (!profileForm.address.trim()) {
+      setProfileError('Alamat wajib diisi');
+      return;
+    }
+    // Validasi format alamat (minimal 15 karakter, hindari input ngasal)
+    if (profileForm.address.trim().length < 15) {
+      setProfileError('Alamat harus minimal 15 karakter (contoh: Jl. Merdeka No. 123)');
+      return;
+    }
+
     try {
       setProfileLoading(true);
       setProfileError('');
       setProfileMessage('');
       const employee = await profileApi.updateMyProfile(token, {
         full_name: profileForm.full_name,
-        phone: profileForm.phone,
+        phone: normalizedPhone,
         address: profileForm.address,
         photo_file: profileForm.photo_file || undefined,
         photo_deleted: profileForm.photo_deleted,
@@ -843,7 +875,7 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
         photo_url: employee.photo_url || null,
       });
       
-      setProfileForm((prev) => ({ ...prev, photo_file: null, photo_deleted: false }));
+      setProfileForm((prev) => ({ ...prev, phone: normalizedPhone, photo_file: null, photo_deleted: false }));
       if (photoInputRef.current) {
         try { photoInputRef.current.value = ''; } catch {}
       }
@@ -1194,7 +1226,7 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
         <h3>Profile</h3>
         {currentUser.employee ? (
           <form className="profile-form" onSubmit={handleProfileUpdate}>
-            {profileError && <p className="inline-error">{profileError}</p>}
+            {profileError && <p className="inline-error" style={{ color: '#dc2626' }}>{profileError}</p>}
             {profileMessage && <p className="inline-success">{profileMessage}</p>}
 
             <div className="form-group" style={{ marginBottom: 20 }}>
@@ -1297,7 +1329,7 @@ export function PortalPage({ currentUser, onLogout, onEmployeeUpdate }: PortalPa
                 <input
                   value={profileForm.phone}
                   onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
-                  placeholder="Nomor telepon"
+                  placeholder="Contoh: 081234567890 (minimal 10 digit)"
                   disabled={profileLoading}
                 />
               </div>
